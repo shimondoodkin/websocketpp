@@ -1,0 +1,91 @@
+cmake_minimum_required(VERSION 3.9)
+
+
+
+set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+
+#if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+#  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+#    CACHE STRING "")
+#    message(" [INFO] VCPKG CMAKE_TOOLCHAIN_FILE = ${CMAKE_TOOLCHAIN_FILE}")
+#endif()
+
+#set(VCPKG_TARGET_ARCHITECTURE x64)
+# set(VCPKG_LIBRARY_LINKAGE "static")
+# set(VCPKG_TARGET_TRIPLET "x64-windows-static")
+
+#if(${PORT} MATCHES "luajit|lua-lsqlite3|lua-cjson|pthread")
+#	set(VCPKG_CRT_LINKAGE dynamic)
+#	set(VCPKG_LIBRARY_LINKAGE dynamic)
+#else()
+#	set(VCPKG_CRT_LINKAGE static)
+#	set(VCPKG_LIBRARY_LINKAGE static)
+#endif()
+
+#======= Global Project Configuration =========#
+
+project(utility_client_tls)
+set(CMAKE_CXX_STANDARD 20)    
+
+
+
+#if(MSVC)
+#    add_compile_options(
+#        $<$<CONFIG:>:/MT> #---------|
+#        $<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
+#        $<$<CONFIG:Release>:/MT> #--|
+#    )
+#endif()
+
+
+#========== Targets Configurations ============#
+
+find_package(ZLIB REQUIRED)
+
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost REQUIRED COMPONENTS random)
+include_directories(${Boost_INCLUDE_DIRS})
+
+find_package(websocketpp CONFIG REQUIRED)
+find_package(Threads)
+find_package(OpenSSL REQUIRED)
+
+#https://stackoverflow.com/a/9328525/466363
+function(dump_cmake_variables)
+    get_cmake_property(_variableNames VARIABLES)
+    list (SORT _variableNames)
+    foreach (_variableName ${_variableNames})
+        if (ARGV0)
+            unset(MATCHED)
+
+            #case sensitive match
+            # string(REGEX MATCH ${ARGV0} MATCHED ${_variableName})
+            #
+            #case insenstitive match
+            string( TOLOWER "${ARGV0}" ARGV0_lower )
+            string( TOLOWER "${_variableName}" _variableName_lower )
+            string(REGEX MATCH ${ARGV0_lower} MATCHED ${_variableName_lower})
+
+            if (NOT MATCHED)
+                continue()
+            endif()
+        endif()
+        message(STATUS "${_variableName}=${${_variableName}}")
+    endforeach()
+endfunction()
+#dump_cmake_variables("^Boost")
+
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/ca-chain.cert.pem DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(client client.cpp tls_util.cpp  tls_util.hpp)
+
+target_link_libraries(client PRIVATE
+ ZLIB::ZLIB
+ ${Boost_LIBRARIES}
+ websocketpp::websocketpp
+ OpenSSL::SSL OpenSSL::Crypto
+)
+
+# Install directory relative to ${CMAKE_PREFIX_PATH}
+#install(TARGETS gui1 DESTINATION ./bin)
